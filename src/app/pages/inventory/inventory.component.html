@@ -1,0 +1,375 @@
+<div class="space-y-6">
+  <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+    <div>
+      <h1 class="text-title-md font-semibold text-gray-800 dark:text-white/90">Inventario</h1>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Control de bienes, materiales, herramientas y movimientos por área.</p>
+    </div>
+    <button type="button" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600" (click)="openCreate()">
+      Nuevo artículo
+    </button>
+  </div>
+
+  @if (errorMessage) {
+    <div class="rounded-xl border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-700" role="alert">
+      {{ errorMessage }}
+    </div>
+  }
+
+  <div class="grid gap-4 md:grid-cols-3">
+    <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+      <p class="text-sm text-gray-500 dark:text-gray-400">Activos</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-800 dark:text-white/90">{{ categoryCount('ASSET') }}</p>
+    </div>
+    <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+      <p class="text-sm text-gray-500 dark:text-gray-400">Materiales</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-800 dark:text-white/90">{{ categoryCount('MATERIAL') }}</p>
+    </div>
+    <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+      <p class="text-sm text-gray-500 dark:text-gray-400">Herramientas</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-800 dark:text-white/90">{{ categoryCount('TOOL') }}</p>
+    </div>
+  </div>
+
+  <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="mb-4 flex flex-wrap items-center gap-2">
+      <input
+        type="search"
+        placeholder="Buscar por nombre, código o ubicación…"
+        [(ngModel)]="searchTerm"
+        (ngModelChange)="applyFilter()"
+        class="h-9 w-full min-w-[220px] flex-1 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white/90"
+      />
+      <button type="button" class="rounded-md px-3 py-2 text-sm font-medium" [class.bg-brand-500]="categoryFilter === 'ALL'" [class.text-white]="categoryFilter === 'ALL'" [class.text-gray-500]="categoryFilter !== 'ALL'" (click)="categoryFilter = 'ALL'; applyFilter()">Todos</button>
+      <button type="button" class="rounded-md px-3 py-2 text-sm font-medium" [class.bg-brand-500]="categoryFilter === 'ASSET'" [class.text-white]="categoryFilter === 'ASSET'" [class.text-gray-500]="categoryFilter !== 'ASSET'" (click)="categoryFilter = 'ASSET'; applyFilter()">Activos</button>
+      <button type="button" class="rounded-md px-3 py-2 text-sm font-medium" [class.bg-brand-500]="categoryFilter === 'MATERIAL'" [class.text-white]="categoryFilter === 'MATERIAL'" [class.text-gray-500]="categoryFilter !== 'MATERIAL'" (click)="categoryFilter = 'MATERIAL'; applyFilter()">Materiales</button>
+      <button type="button" class="rounded-md px-3 py-2 text-sm font-medium" [class.bg-brand-500]="categoryFilter === 'TOOL'" [class.text-white]="categoryFilter === 'TOOL'" [class.text-gray-500]="categoryFilter !== 'TOOL'" (click)="categoryFilter = 'TOOL'; applyFilter()">Herramientas</button>
+    </div>
+
+    @if (loading) {
+      <div class="space-y-3 animate-pulse" aria-live="polite">
+        <div class="h-12 rounded-lg bg-gray-200 dark:bg-gray-700"></div>
+        <div class="h-12 rounded-lg bg-gray-200/90 dark:bg-gray-700/90"></div>
+        <div class="h-12 rounded-lg bg-gray-200/80 dark:bg-gray-700/80"></div>
+      </div>
+    } @else if (!filteredItems.length) {
+      <p class="py-8 text-center text-sm text-gray-500 dark:text-gray-400">No hay artículos para esta categoría.</p>
+    } @else {
+      <div class="space-y-4">
+        @for (item of filteredItems; track item.id) {
+          <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <div class="flex items-center gap-2">
+                  <button type="button" class="text-left text-sm font-semibold text-gray-800 hover:text-brand-600 dark:text-white/90 dark:hover:text-brand-300" (click)="openHistory(item)">{{ item.name }}</button>
+                  <span class="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-600 dark:bg-brand-500/10 dark:text-brand-300">{{ getCategoryLabel(item.category) }}</span>
+                  <span class="rounded-full px-2 py-0.5 text-[11px] font-medium" [ngClass]="getItemState(item).tone">
+                    {{ getItemState(item).label }}
+                  </span>
+                </div>
+                <div class="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                  <span>Código: {{ item.code }}</span>
+                  <span>Ubicación: {{ item.location || 'Sin ubicación' }}</span>
+                  <span>Stock: {{ item.quantity }} {{ item.unit || 'un' }}</span>
+                </div>
+                <p class="mt-2 text-[11px] text-gray-500 dark:text-gray-400">{{ getItemState(item).hint }}</p>
+              </div>
+
+              <div class="flex flex-wrap gap-2">
+                <button type="button" class="rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800" (click)="openEdit(item)">Editar</button>
+
+                @if (item.category !== 'MATERIAL') {
+                  <button
+                    type="button"
+                    class="rounded-lg bg-brand-500 px-3 py-2 text-xs font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-gray-700 dark:disabled:text-gray-400"
+                    [disabled]="!canLoanItem(item.id)"
+                    (click)="openMovement(item, 'LOAN')"
+                  >
+                    Préstamo
+                  </button>
+                }
+
+                <button
+                  type="button"
+                  class="rounded-lg bg-turquoise-500 px-3 py-2 text-xs font-medium text-white hover:bg-turquoise-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-gray-700 dark:disabled:text-gray-400"
+                  [disabled]="!canConsumeItem(item.id)"
+                  (click)="openMovement(item, 'CONSUMPTION')"
+                >
+                  Consumo
+                </button>
+
+                @if (item.category !== 'MATERIAL') {
+                  <button
+                    type="button"
+                    class="rounded-lg bg-coral-500 px-3 py-2 text-xs font-medium text-white hover:bg-coral-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-gray-700 dark:disabled:text-gray-400"
+                    [disabled]="!canReturnItem(item.id)"
+                    (click)="openReturnModal(item, getOpenLoanMovement(item.id)!)"
+                  >
+                    Devolver
+                  </button>
+                }
+
+                <button type="button" class="rounded-lg border border-error-200 px-3 py-2 text-xs font-medium text-error-600 hover:bg-error-50 dark:border-error-900 dark:text-error-400" (click)="deleteItem(item)">Eliminar</button>
+              </div>
+            </div>
+
+            <div class="mt-4 flex items-center justify-between border-t border-gray-200 pt-3 dark:border-gray-800">
+              <span class="text-xs text-gray-500 dark:text-gray-400">
+                @if (activeLoansByItem[item.id]; as loan) {
+                  Prestado a {{ loan.responsiblePerson || '—' }} desde {{ loan.movementAt | date: 'dd/MM/yyyy HH:mm' }}
+                } @else {
+                  Sin préstamos activos
+                }
+              </span>
+              <button type="button" class="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-300" (click)="openHistory(item)">Ver historial</button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  @if (formOpen) {
+    <div class="fixed inset-0 z-[2000] flex items-center justify-center bg-gray-900/45 p-3 sm:p-4 backdrop-blur-[6px]">
+      <div class="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl ring-1 ring-gray-200 dark:border-gray-800 dark:bg-gray-900 dark:ring-gray-800 sm:p-5">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">{{ editing ? 'Editar artículo' : 'Nuevo artículo' }}</h3>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Gestiona el stock por categoría.</p>
+          </div>
+          <button type="button" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800" (click)="closeForm()">Cerrar</button>
+        </div>
+
+        <form class="grid grid-cols-1 gap-4 md:grid-cols-2" (ngSubmit)="save()">
+          <label class="text-sm text-gray-600 dark:text-gray-300">
+            Código
+            <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="text" maxlength="80" [(ngModel)]="form.code" name="code" required />
+          </label>
+
+          <label class="text-sm text-gray-600 dark:text-gray-300">
+            Nombre
+            <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="text" maxlength="120" [(ngModel)]="form.name" name="name" required />
+          </label>
+
+          <label class="text-sm text-gray-600 dark:text-gray-300">
+            Categoría
+            <select class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" [(ngModel)]="form.category" name="category">
+              <option value="ASSET">Activo</option>
+              <option value="MATERIAL">Material</option>
+              <option value="TOOL">Herramienta</option>
+            </select>
+          </label>
+
+          <label class="text-sm text-gray-600 dark:text-gray-300">
+            Cantidad
+            <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="number" min="0" [(ngModel)]="form.quantity" name="quantity" />
+          </label>
+
+          <label class="text-sm text-gray-600 dark:text-gray-300">
+            Stock mínimo
+            <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="number" min="0" [(ngModel)]="form.minStock" name="minStock" placeholder="Alerta al llegar a…" />
+          </label>
+
+          <label class="text-sm text-gray-600 dark:text-gray-300">
+            Unidad
+            <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="text" maxlength="40" [(ngModel)]="form.unit" name="unit" placeholder="un / rollos / cajas" />
+          </label>
+
+          <label class="text-sm text-gray-600 dark:text-gray-300">
+            Ubicación
+            <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="text" maxlength="120" [(ngModel)]="form.location" name="location" />
+          </label>
+
+          <label class="text-sm text-gray-600 dark:text-gray-300 md:col-span-2">
+            Notas
+            <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="text" maxlength="200" [(ngModel)]="form.notes" name="notes" />
+          </label>
+
+          @if (formError) {
+            <p class="md:col-span-2 rounded-lg bg-error-50 px-3 py-2 text-sm text-error-600 dark:bg-error-500/10 dark:text-error-400">{{ formError }}</p>
+          }
+          @if (hasFieldErrors) {
+            <ul class="md:col-span-2 rounded-lg bg-error-50 px-3 py-2 text-sm text-error-600 dark:bg-error-500/10 dark:text-error-400">
+              @for (error of fieldErrorList; track error) {
+                <li>{{ error }}</li>
+              }
+            </ul>
+          }
+
+          <div class="md:col-span-2 flex justify-end gap-2 pt-2">
+            <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 dark:border-gray-700 dark:text-gray-300" (click)="closeForm()">Cancelar</button>
+            <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  @if (returnModalOpen && returnItem && returnMovement) {
+    <div class="fixed inset-0 z-[2000] flex items-center justify-center bg-gray-900/45 p-3 sm:p-4 backdrop-blur-[6px]">
+      <div class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl ring-1 ring-gray-200 dark:border-gray-800 dark:bg-gray-900 dark:ring-gray-800 sm:p-5">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Registrar devolución</h3>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ returnItem.name }} · {{ returnMovement.responsiblePerson }}</p>
+          </div>
+          <button type="button" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800" (click)="closeReturnModal()">Cerrar</button>
+        </div>
+
+        <form class="space-y-4" (ngSubmit)="submitReturn()">
+          <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-white/[0.02] dark:text-gray-300">
+            <div class="flex items-center justify-between gap-3 py-1">
+              <span>Cantidad</span>
+              <strong>{{ returnMovement.quantity }}</strong>
+            </div>
+            <div class="flex items-center justify-between gap-3 py-1">
+              <span>Responsable</span>
+              <strong>{{ returnMovement.responsiblePerson }}</strong>
+            </div>
+            <div class="flex items-center justify-between gap-3 py-1">
+              <span>Área</span>
+              <strong>{{ returnMovement.destinationArea || 'Sin área' }}</strong>
+            </div>
+          </div>
+
+          <label class="block text-sm text-gray-600 dark:text-gray-300">
+            Persona que recibió
+            <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="text" [value]="returnReceivedBy" [readOnly]="true" name="returnReceivedBy" />
+          </label>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 dark:border-gray-700 dark:text-gray-300" (click)="closeReturnModal()">Cancelar</button>
+            <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">Confirmar devolución</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  @if (historyOpen && historyItem) {
+    <div class="fixed inset-0 z-[2000] flex items-center justify-center bg-gray-900/45 p-3 sm:p-4 backdrop-blur-[6px]">
+      <div class="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl ring-1 ring-gray-200 dark:border-gray-800 dark:bg-gray-900 dark:ring-gray-800 sm:p-5">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Historial de {{ historyItem.name }}</h3>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Todos los préstamos y devoluciones registrados.</p>
+          </div>
+          <button type="button" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800" (click)="closeHistory()">Cerrar</button>
+        </div>
+
+        @if (movementHistory[historyItem.id]?.length) {
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="border-y border-gray-200 dark:border-gray-800">
+                <tr>
+                  <th class="py-2 text-gray-500 dark:text-gray-400">Tipo</th>
+                  <th class="py-2 text-gray-500 dark:text-gray-400">Cantidad</th>
+                  <th class="py-2 text-gray-500 dark:text-gray-400">Responsable</th>
+                  <th class="py-2 text-gray-500 dark:text-gray-400">Área</th>
+                  <th class="py-2 text-gray-500 dark:text-gray-400">Fecha</th>
+                  <th class="py-2 text-gray-500 dark:text-gray-400">Recibió</th>
+                  <th class="py-2 text-gray-500 dark:text-gray-400">Estado</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                @for (movement of movementHistory[historyItem.id]; track movement.id) {
+                  <tr>
+                    <td class="py-2 text-gray-700 dark:text-gray-300">{{ getMovementLabel(movement.type) }}</td>
+                    <td class="py-2 text-gray-700 dark:text-gray-300">{{ movement.quantity }}</td>
+                    <td class="py-2 text-gray-700 dark:text-gray-300">{{ movement.responsiblePerson || '—' }}</td>
+                    <td class="py-2 text-gray-700 dark:text-gray-300">{{ movement.destinationArea || '—' }}</td>
+                    <td class="py-2 text-gray-700 dark:text-gray-300">{{ movement.movementAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+                    <td class="py-2 text-gray-700 dark:text-gray-300">{{ movement.receivedBy || '—' }}</td>
+                    <td class="py-2">
+                      @if (movement.type === 'LOAN' && !movement.returnedAt) {
+                        <button type="button" class="rounded-full bg-warning-50 px-2 py-0.5 text-[10px] font-medium text-warning-700 hover:bg-warning-100 dark:bg-warning-500/10 dark:text-warning-300" (click)="openReturnModal(historyItem, movement)">Registrar devolución</button>
+                      } @else {
+                        <span class="rounded-full bg-success-50 px-2 py-0.5 text-[10px] font-medium text-success-700 dark:bg-success-500/10 dark:text-success-300">{{ movement.type === 'LOAN' ? 'Devuelto' : 'Registrado' }}</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="py-8 text-center text-sm text-gray-500 dark:text-gray-400">Aún no hay movimientos para este artículo.</p>
+        }
+      </div>
+    </div>
+  }
+
+  @if (movementOpen && movementItem) {
+    <div class="fixed inset-0 z-[2000] flex items-center justify-center bg-gray-900/45 p-3 sm:p-4 backdrop-blur-[6px]">
+      <div class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl ring-1 ring-gray-200 dark:border-gray-800 dark:bg-gray-900 dark:ring-gray-800 sm:p-5">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">{{ getMovementLabel(movementType) }} de {{ movementItem.name }}</h3>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Registro para {{ movementItem.location || 'almacén' }}</p>
+          </div>
+          <button type="button" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800" (click)="closeMovement()">Cerrar</button>
+        </div>
+
+        <form class="grid grid-cols-1 gap-4 md:grid-cols-2" (ngSubmit)="submitMovement()">
+          <label class="text-sm text-gray-600 dark:text-gray-300">
+            Tipo de movimiento
+            <select class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" [(ngModel)]="movementType" name="movementType">
+              <option value="LOAN">Préstamo</option>
+              <option value="RETURN">Retorno</option>
+              <option value="CONSUMPTION">Consumo</option>
+              <option value="ADJUSTMENT">Ajuste</option>
+            </select>
+          </label>
+
+          <label class="text-sm text-gray-600 dark:text-gray-300">
+            Cantidad
+            <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="number" min="1" [(ngModel)]="movementForm.quantity" name="movementQuantity" />
+          </label>
+
+          <label class="text-sm text-gray-600 dark:text-gray-300">
+            Responsable
+            <select class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" [(ngModel)]="selectedResponsibleEmployeeId" name="selectedResponsibleEmployeeId" (ngModelChange)="movementForm.responsiblePerson = getEmployeeById($event)?.fullName ?? ''">
+              <option [value]="''" disabled>Selecciona un empleado</option>
+              @for (employee of employees; track employee.id) {
+                <option [value]="employee.id">{{ employee.fullName }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="text-sm text-gray-600 dark:text-gray-300">
+            Área / destino
+            <select class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" [(ngModel)]="movementForm.destinationArea" name="destinationArea">
+              <option value="">Selecciona un área</option>
+              <option value="Administración">Administración</option>
+              <option value="Mantenimiento">Mantenimiento</option>
+              <option value="Limpieza">Limpieza</option>
+              <option value="Jardinería">Jardinería</option>
+              <option value="Vigilancia">Vigilancia</option>
+            </select>
+          </label>
+
+          <label class="text-sm text-gray-600 dark:text-gray-300 md:col-span-2">
+            Fecha y hora
+            <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="datetime-local" [(ngModel)]="movementForm.movementAt" name="movementAt" />
+          </label>
+
+          <label class="text-sm text-gray-600 dark:text-gray-300 md:col-span-2">
+            Observación / motivo
+            <textarea class="mt-1 min-h-24 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" [(ngModel)]="movementForm.notes" name="notes" placeholder="Ej. Se lleva para mantenimiento, material de limpieza, etc."></textarea>
+          </label>
+
+          @if (movementType === 'RETURN') {
+            <label class="text-sm text-gray-600 dark:text-gray-300 md:col-span-2">
+              Persona que recibió
+              <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="text" [(ngModel)]="movementForm.receivedBy" name="receivedBy" placeholder="Ej. Carlos Ruiz" />
+            </label>
+          }
+
+          <div class="md:col-span-2 flex justify-end gap-2 pt-2">
+            <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 dark:border-gray-700 dark:text-gray-300" (click)="closeMovement()">Cancelar</button>
+            <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">Guardar movimiento</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+</div>

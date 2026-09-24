@@ -1,0 +1,204 @@
+<div class="space-y-6">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-title-md font-semibold text-gray-800 dark:text-white/90">Usuarios del sistema</h1>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Administra usuarios, propietarios, empleados y directiva.</p>
+    </div>
+    <button type="button" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600" (click)="openCreate()">
+      Nuevo usuario
+    </button>
+  </div>
+
+  @if (errorMessage) {
+    <div class="rounded-xl border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-700" role="alert">
+      {{ errorMessage }}
+    </div>
+  }
+
+  @if (pageLoading) {
+    <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="mb-4 h-10 w-44 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700"></div>
+      <div class="space-y-3">
+        <div class="h-12 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700"></div>
+        <div class="h-12 animate-pulse rounded-lg bg-gray-200/90 dark:bg-gray-700/90"></div>
+        <div class="h-12 animate-pulse rounded-lg bg-gray-200/80 dark:bg-gray-700/80"></div>
+      </div>
+    </div>
+  } @else {
+    <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="mb-4 flex flex-wrap items-center gap-3">
+        <input
+          type="search"
+          placeholder="Buscar por nombre o correo…"
+          [(ngModel)]="searchTerm"
+          (ngModelChange)="applyFilters()"
+          class="h-10 w-full min-w-[220px] flex-1 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white/90"
+        />
+        <select class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" [(ngModel)]="roleFilter" (ngModelChange)="applyFilters()">
+          <option value="ALL">Todos</option>
+          <option value="OWNER">Propietarios</option>
+          <option value="EMPLOYEE">Empleados</option>
+          <option value="ASSISTANT_ADMIN">Asistente admin</option>
+          <option value="ADMIN">Administradores</option>
+          <option value="BOARD">Directiva</option>
+          <option value="RESIDENT">Residentes</option>
+        </select>
+      </div>
+
+      @if (loading) {
+        <div class="space-y-3 animate-pulse" aria-live="polite">
+          <div class="h-12 rounded-lg bg-gray-200 dark:bg-gray-700"></div>
+          <div class="h-12 rounded-lg bg-gray-200/90 dark:bg-gray-700/90"></div>
+          <div class="h-12 rounded-lg bg-gray-200/80 dark:bg-gray-700/80"></div>
+        </div>
+      } @else if (!filteredPeople.length) {
+        <p class="py-8 text-center text-sm text-gray-500 dark:text-gray-400">No hay usuarios para mostrar.</p>
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="w-full text-left">
+            <thead class="border-y border-gray-100 dark:border-gray-800">
+              <tr>
+                <th class="py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Nombre</th>
+                <th class="py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Correo</th>
+                <th class="py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Rol</th>
+                <th class="py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Documento</th>
+                <th class="py-3 text-end text-xs font-medium text-gray-500 dark:text-gray-400">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+              @for (person of filteredPeople; track person.id) {
+                <tr class="animate-[fadeIn_0.35s_ease-out]">
+                  <td class="py-3 text-sm text-gray-700 dark:text-gray-300">{{ person.fullName || person.firstName + ' ' + person.lastName }}</td>
+                  <td class="py-3 text-sm text-gray-500 dark:text-gray-400">{{ person.email }}</td>
+                  <td class="py-3 text-sm text-gray-500 dark:text-gray-400">
+                    {{ person.role }}
+                    @if (person.boardMember) {
+                      <span class="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">Directiva</span>
+                    }
+                  </td>
+                  <td class="py-3 text-sm text-gray-500 dark:text-gray-400">{{ person.documentNumber || '—' }}</td>
+                  <td class="py-3 text-end">
+                    <button type="button" class="me-3 text-sm font-medium text-brand-600 hover:text-brand-700" (click)="openEdit(person)">Editar</button>
+                    <button type="button" class="text-sm font-medium text-error-600 hover:text-error-700" (click)="deletePerson(person)">Eliminar</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+
+  @if (formOpen) {
+    <div class="fixed inset-0 z-[1000] flex items-center justify-center bg-gray-900/45 p-3 sm:p-4 backdrop-blur-[6px]">
+      <div class="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl ring-1 ring-gray-200 dark:border-gray-800 dark:bg-gray-900 dark:ring-gray-800 sm:p-5">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">{{ editingId ? 'Editar usuario' : 'Crear usuario' }}</h3>
+          <button type="button" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300" (click)="closeForm()">Cerrar</button>
+        </div>
+
+        <form class="grid grid-cols-1 gap-4 sm:grid-cols-2" (ngSubmit)="save()">
+          @if (employees.length) {
+            <label class="text-sm text-gray-600 dark:text-gray-300 sm:col-span-2">
+              Empleado ya registrado
+              <select class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" (change)="bindEmployee($any($event.target).value ? employees.find((employee) => employee.id === $any($event.target).value) ?? null : null)" [value]="''">
+                <option value="">Selecciona un empleado existente para crear su usuario</option>
+                @for (employee of employees; track employee.id) {
+                  <option [value]="employee.id">{{ employee.fullName }} · {{ employee.employeeType }}</option>
+                }
+              </select>
+            </label>
+          }
+
+          <label class="text-sm text-gray-600 dark:text-gray-300">Nombre
+            <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="text" [(ngModel)]="form.firstName" name="firstName" required />
+          </label>
+          <label class="text-sm text-gray-600 dark:text-gray-300">Apellido
+            <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="text" [(ngModel)]="form.lastName" name="lastName" required />
+          </label>
+          <label class="text-sm text-gray-600 dark:text-gray-300 sm:col-span-2">Correo
+            <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="email" [(ngModel)]="form.email" name="email" required />
+          </label>
+          @if (!editingId) {
+            <label class="text-sm text-gray-600 dark:text-gray-300 sm:col-span-2">Contraseña
+              <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="password" [(ngModel)]="form.password" name="password" required />
+            </label>
+          }
+          <label class="text-sm text-gray-600 dark:text-gray-300">Rol
+            <select class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" [(ngModel)]="form.role" name="role" (ngModelChange)="onRoleChange()">
+              <option value="OWNER">Propietario</option>
+              <option value="EMPLOYEE">Empleado</option>
+              <option value="ASSISTANT_ADMIN">Asistente admin</option>
+              <option value="ADMIN">Administrador</option>
+              <option value="BOARD">Directiva</option>
+              <option value="RESIDENT">Residente</option>
+            </select>
+          </label>
+          <label class="text-sm text-gray-600 dark:text-gray-300">Tipo de empleado
+            <select class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" [(ngModel)]="form.employeeType" name="employeeType">
+              <option [ngValue]="null">Ninguno</option>
+              <option value="CLEANING">Limpieza</option>
+              <option value="MAINTENANCE">Mantenimiento</option>
+              <option value="GARDENING">Jardinería</option>
+              <option value="CCTV_OPERATOR">Operador CCTV</option>
+              <option value="SECURITY_GUARD">Seguridad</option>
+              <option value="ASSISTANT_ADMIN">Asistente admin</option>
+            </select>
+          </label>
+          @if (form.role === 'OWNER') {
+            <label class="text-sm text-gray-600 dark:text-gray-300">Propiedad / N° de lote
+              <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="text" [(ngModel)]="form.property" name="property" [required]="!editingId" placeholder="Ej. Mz. B Lote 12" />
+            </label>
+            <div class="flex items-center gap-2 self-end pb-2 text-sm text-gray-600 dark:text-gray-300">
+              <input class="size-4 rounded border-gray-300 text-brand-500 accent-brand-500 focus:ring-brand-500" type="checkbox" id="boardMember" [(ngModel)]="form.boardMember" name="boardMember" (ngModelChange)="onRoleChange()" />
+              <label for="boardMember" class="cursor-pointer select-none">Miembro de la directiva</label>
+            </div>
+          }
+          @if (showBoardPosition) {
+            <label class="text-sm text-gray-600 dark:text-gray-300">Cargo en la directiva
+              <select class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" [(ngModel)]="form.boardPosition" name="boardPosition" required>
+                <option [ngValue]="null">Selecciona el cargo</option>
+                @for (position of boardPositions; track position) {
+                  <option [ngValue]="position">{{ boardPositionLabels[position] }}</option>
+                }
+              </select>
+            </label>
+          }
+          <label class="text-sm text-gray-600 dark:text-gray-300">Tipo de documento
+            <select class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" [(ngModel)]="form.documentType" name="documentType">
+              <option value="">Selecciona</option>
+              <option value="DNI">DNI</option>
+              <option value="CARNET_EXTRANJERIA">Carnet de Extranjería</option>
+            </select>
+          </label>
+          <label class="text-sm text-gray-600 dark:text-gray-300">Número de documento
+            <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="text" [(ngModel)]="form.documentNumber" name="documentNumber" />
+          </label>
+          <label class="text-sm text-gray-600 dark:text-gray-300">Teléfono
+            <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="text" [(ngModel)]="form.phone" name="phone" />
+          </label>
+          <label class="text-sm text-gray-600 dark:text-gray-300 sm:col-span-2">Dirección
+            <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="text" [(ngModel)]="form.address" name="address" />
+          </label>
+
+          @if (formError) {
+            <p class="sm:col-span-2 rounded-lg bg-error-50 px-3 py-2 text-sm text-error-600 dark:bg-error-500/10 dark:text-error-400">{{ formError }}</p>
+          }
+          @if (hasFieldErrors) {
+            <ul class="sm:col-span-2 rounded-lg bg-error-50 px-3 py-2 text-sm text-error-600 dark:bg-error-500/10 dark:text-error-400">
+              @for (error of fieldErrorList; track error.field) {
+                <li>{{ error.message }}</li>
+              }
+            </ul>
+          }
+
+          <div class="sm:col-span-2 flex justify-end gap-3 pt-2">
+            <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 dark:border-gray-700 dark:text-gray-300" (click)="closeForm()">Cancelar</button>
+            <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+</div>

@@ -1,0 +1,173 @@
+<div class="space-y-6">
+  <div>
+    <h1 class="text-title-md font-semibold text-gray-800 dark:text-white/90">Servicios</h1>
+    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Registro diario del consumo de agua y luz por propietario.</p>
+  </div>
+
+  @if (errorMessage) {
+  <div class="rounded-xl border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-700" role="alert">
+    {{ errorMessage }}
+  </div>
+  }
+
+  <div class="grid grid-cols-1 gap-6 xl:grid-cols-12">
+    @if (!selfView) {
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] xl:col-span-4">
+      <div class="mb-4 flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800 dark:text-white/90">Propietarios</h2>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Selecciona una persona</p>
+        </div>
+        <span class="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
+          {{ owners.length }}
+        </span>
+      </div>
+
+      @if (loadingOwners) {
+      <div class="space-y-3 animate-pulse" aria-live="polite">
+        <div class="h-14 rounded-xl bg-gray-200 dark:bg-gray-700"></div>
+        <div class="h-14 rounded-xl bg-gray-200/90 dark:bg-gray-700/90"></div>
+        <div class="h-14 rounded-xl bg-gray-200/80 dark:bg-gray-700/80"></div>
+      </div>
+      } @else if (!owners.length) {
+      <p class="py-8 text-center text-sm text-gray-500 dark:text-gray-400">No hay propietarios registrados.</p>
+      } @else {
+      <div class="space-y-2">
+        @for (owner of owners; track owner.id) {
+        <button
+          type="button"
+          class="flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-start transition hover:border-brand-300 hover:bg-brand-50/60 dark:hover:bg-brand-500/10"
+          [class.border-brand-500]="selectedOwner?.id === owner.id"
+          [class.bg-brand-50]="selectedOwner?.id === owner.id"
+          [class.border-gray-200]="selectedOwner?.id !== owner.id"
+          [class.dark:border-brand-500]="selectedOwner?.id === owner.id"
+          [class.dark:border-gray-800]="selectedOwner?.id !== owner.id"
+          (click)="selectOwner(owner)"
+        >
+          <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">
+            {{ owner.firstName.charAt(0) }}{{ owner.lastName.charAt(0) }}
+          </span>
+          <span class="min-w-0">
+            <span class="block truncate text-sm font-medium text-gray-800 dark:text-white/90">{{ ownerName(owner) }}</span>
+            <span class="block truncate text-xs text-gray-500 dark:text-gray-400">{{ owner.property ? owner.property + ' · ' + owner.email : owner.email }}</span>
+          </span>
+        </button>
+        }
+      </div>
+      }
+    </section>
+    }
+
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]" [ngClass]="selfView ? 'xl:col-span-12' : 'xl:col-span-8'">
+      @if (selectedOwner) {
+      <div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800 dark:text-white/90">{{ ownerName(selectedOwner) }}</h2>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Historial diario de consumo de servicios</p>
+        </div>
+        @if (canWrite) {
+        <div class="flex flex-wrap items-center gap-3">
+          <button type="button" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600" (click)="openCreate()">Nueva medición</button>
+        </div>
+        }
+      </div>
+
+      @if (formOpen) {
+      <div class="fixed inset-0 z-[1000] flex items-center justify-center bg-gray-900/45 p-3 sm:p-4 backdrop-blur-[6px]">
+        <div class="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl ring-1 ring-gray-200 dark:border-gray-800 dark:bg-gray-900 dark:ring-gray-800 sm:p-5">
+          <div class="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">{{ editingRecord ? 'Editar medición' : 'Nueva medición' }}</h3>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ selectedOwner ? ownerName(selectedOwner) : 'Propietario' }}</p>
+            </div>
+            <button type="button" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800" (click)="closeForm()">Cerrar</button>
+          </div>
+
+          <form class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" (ngSubmit)="saveConsumption()">
+            <label class="text-sm text-gray-600 dark:text-gray-300">Fecha
+              <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="date" name="periodStart" [(ngModel)]="form.periodStart" required />
+            </label>
+            <label class="text-sm text-gray-600 dark:text-gray-300">Agua (L)
+              <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="number" min="0" step="0.01" name="waterLiters" [(ngModel)]="form.waterLiters" required />
+            </label>
+            <label class="text-sm text-gray-600 dark:text-gray-300">Luz (kWh)
+              <input class="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white" type="number" min="0" step="0.01" name="electricityKwh" [(ngModel)]="form.electricityKwh" required />
+            </label>
+            <div class="flex items-end gap-2">
+              <button class="h-10 rounded-lg bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-brand-400" type="submit" [disabled]="saving">
+                {{ saving ? 'Guardando...' : (editingRecord ? 'Actualizar' : 'Guardar') }}
+              </button>
+              <button class="h-10 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-600 dark:border-gray-700 dark:text-gray-300" type="button" (click)="closeForm()">Cancelar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      }
+
+      @if (loadingRecords) {
+      <div class="space-y-3 py-10 animate-pulse" aria-live="polite">
+        <div class="h-12 rounded-lg bg-gray-200 dark:bg-gray-700"></div>
+        <div class="h-12 rounded-lg bg-gray-200/90 dark:bg-gray-700/90"></div>
+        <div class="h-12 rounded-lg bg-gray-200/80 dark:bg-gray-700/80"></div>
+      </div>
+      } @else if (!records.length) {
+      <div class="rounded-xl border border-dashed border-gray-300 px-4 py-16 text-center dark:border-gray-700">
+        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">No hay consumos registrados</p>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Registra la medición del día para visualizar el historial.</p>
+      </div>
+      } @else {
+      <div class="mb-6 rounded-xl border border-gray-100 p-3 dark:border-gray-800">
+        <div class="mb-2 flex flex-wrap items-center justify-between gap-3">
+          <div class="inline-flex rounded-lg border border-gray-200 p-1 dark:border-gray-700" role="group" aria-label="Métrica del gráfico">
+            <button type="button" class="rounded-md px-3 py-1.5 text-sm font-medium" [class.bg-brand-500]="chartTab === 'water'" [class.text-white]="chartTab === 'water'" [class.text-gray-500]="chartTab !== 'water'" (click)="chartTab = 'water'">Agua</button>
+            <button type="button" class="rounded-md px-3 py-1.5 text-sm font-medium" [class.bg-brand-500]="chartTab === 'power'" [class.text-white]="chartTab === 'power'" [class.text-gray-500]="chartTab !== 'power'" (click)="chartTab = 'power'">Luz</button>
+          </div>
+          @if (chartTab === 'water') {
+            <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Total: {{ totalWater | number:'1.0-2' }} L</span>
+          } @else {
+            <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Total: {{ totalKwh | number:'1.0-2' }} kWh</span>
+          }
+        </div>
+        @if (chartTab === 'water') {
+          <apx-chart [series]="waterSeries" [chart]="waterChart" [colors]="waterColors" [legend]="hideLegend" [xaxis]="xaxis" [stroke]="waterStroke" [grid]="grid" [tooltip]="tooltip" [dataLabels]="dataLabels"></apx-chart>
+        } @else {
+          <apx-chart [series]="powerSeries" [chart]="powerChart" [colors]="powerColors" [legend]="hideLegend" [xaxis]="xaxis" [stroke]="powerStroke" [grid]="grid" [tooltip]="tooltip" [dataLabels]="dataLabels"></apx-chart>
+        }
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-start">
+          <thead class="border-y border-gray-100 dark:border-gray-800">
+            <tr>
+              <th class="py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Fecha</th>
+              <th class="py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Agua</th>
+              <th class="py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Luz</th>
+              @if (canWrite) {
+              <th class="py-3 text-end text-xs font-medium text-gray-500 dark:text-gray-400">Acciones</th>
+              }
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            @for (record of records; track record.id) {
+            <tr>
+              <td class="py-3 text-sm text-gray-700 dark:text-gray-300">{{ formatDate(record.periodStart) }}</td>
+              <td class="py-3 text-sm text-gray-500 dark:text-gray-400">{{ record.waterLiters | number:'1.0-2' }} L</td>
+              <td class="py-3 text-sm text-gray-500 dark:text-gray-400">{{ record.electricityKwh | number:'1.0-2' }} kWh</td>
+              @if (canWrite) {
+              <td class="py-3 text-end">
+                <button type="button" class="me-3 text-sm font-medium text-brand-600 hover:text-brand-700" (click)="openEdit(record)">Editar</button>
+                <button type="button" class="text-sm font-medium text-error-600 hover:text-error-700" (click)="deleteConsumption(record)">Eliminar</button>
+              </td>
+              }
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      }
+      } @else {
+      <div class="flex min-h-64 items-center justify-center text-sm text-gray-500 dark:text-gray-400">Selecciona un propietario.</div>
+      }
+    </section>
+  </div>
+</div>

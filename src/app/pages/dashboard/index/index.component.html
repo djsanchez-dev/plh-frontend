@@ -1,0 +1,176 @@
+<div class="grid grid-cols-12 gap-4 md:gap-6">
+  <!-- Reservorio (intacto) -->
+  <div class="col-span-12 xl:col-span-5">
+    <app-monthly-target
+      [progress]="reservoir.porcentaje"
+      [change]="reservoir.estado"
+      [target]="formatCubicMeters(reservoirCapacityCubicMeters)"
+      [revenue]="formatLiters(remainingLiters)"
+      [today]="formatLiters(occupiedLiters)"
+      [targetLabel]="'Capacidad'"
+      [revenueLabel]="'Restante'"
+      [todayLabel]="'Ocupado'"
+      [summary]="reservoirLoading
+        ? 'Cargando lectura del reservorio...'
+        : reservoirError || ('Dispositivo ' + reservoir.device_id + ': nivel de ' + reservoir.nivel_cm + ' cm.')"
+    />
+  </div>
+
+  <!-- Resumen del sistema -->
+  @if (summaryLoading) {
+    <div class="col-span-12 grid grid-cols-2 gap-4 md:gap-6 xl:col-span-7 sm:grid-cols-3">
+      @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+        <div class="h-24 animate-pulse rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]"></div>
+      }
+    </div>
+  } @else if (summaryError) {
+    <div class="col-span-12 xl:col-span-7">
+      <div class="rounded-2xl border border-error-200 bg-error-50 p-4 text-sm text-error-700" role="alert">
+        {{ summaryError }}
+      </div>
+    </div>
+  } @else if (summary) {
+    <!-- KPIs -->
+    <div class="col-span-12 grid grid-cols-2 gap-4 md:gap-6 xl:col-span-7 sm:grid-cols-3">
+      <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+        <p class="text-sm text-gray-500 dark:text-gray-400">Usuarios</p>
+        <p class="mt-2 text-2xl font-semibold text-gray-800 dark:text-white/90">{{ summary.users.total }}</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ summary.users.owners }} propietarios · {{ summary.users.residents }} residentes</p>
+      </div>
+
+      <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+        <p class="text-sm text-gray-500 dark:text-gray-400">Empleados (cuentas)</p>
+        <p class="mt-2 text-2xl font-semibold text-gray-800 dark:text-white/90">{{ summary.users.employeeAccounts }}</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ summary.staff.total }} en plantilla · {{ summary.staff.active }} activos</p>
+      </div>
+
+      <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+        <p class="text-sm text-gray-500 dark:text-gray-400">Pendientes de aprobación</p>
+        <p class="mt-2 text-2xl font-semibold" [class]="summary.users.pendingApproval > 0 ? 'text-warning-600 dark:text-warning-400' : 'text-gray-800 dark:text-white/90'">
+          {{ summary.users.pendingApproval }}
+        </p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Cuentas por activar</p>
+      </div>
+
+      <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+        <p class="text-sm text-gray-500 dark:text-gray-400">Inventario</p>
+        <p class="mt-2 text-2xl font-semibold text-gray-800 dark:text-white/90">{{ summary.inventory.totalItems }}</p>
+        <p class="mt-1 text-xs" [class]="summary.inventory.outOfStock > 0 ? 'text-error-600 dark:text-error-400' : 'text-gray-500 dark:text-gray-400'">
+          {{ summary.inventory.outOfStock }} sin stock · {{ summary.inventory.lowStock }} bajo mínimo
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+        <p class="text-sm text-gray-500 dark:text-gray-400">Condominios</p>
+        <p class="mt-2 text-2xl font-semibold text-gray-800 dark:text-white/90">{{ summary.community.condominiums }}</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ summary.community.activeCondominiums }} activos · {{ summary.community.points }} puntos</p>
+      </div>
+
+      <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+        <p class="text-sm text-gray-500 dark:text-gray-400">Consumo del mes</p>
+        <p class="mt-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
+          {{ summary.consumption.currentMonthWater | number: '1.0-1' }} m³
+        </p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          {{ summary.consumption.currentMonthKwh | number: '1.0-1' }} kWh · {{ summary.consumption.currentMonthRecords }} registros
+        </p>
+      </div>
+    </div>
+
+    <!-- Detalles -->
+    <div class="col-span-12 grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-3">
+      <!-- Empleados por tipo -->
+      <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+        <h3 class="text-sm font-semibold text-gray-800 dark:text-white/90">Empleados por tipo</h3>
+        @if (!staffEntries.length) {
+          <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">Sin empleados registrados.</p>
+        } @else {
+          <ul class="mt-3 space-y-2">
+            @for (entry of staffEntries; track entry.label) {
+              <li class="flex items-center justify-between text-sm">
+                <span class="text-gray-600 dark:text-gray-300">{{ entry.label }}</span>
+                <span class="font-medium text-gray-800 dark:text-white/90">{{ entry.count }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
+      <!-- Inventario por categoría -->
+      <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+        <h3 class="text-sm font-semibold text-gray-800 dark:text-white/90">Inventario por categoría</h3>
+        @if (!categoryEntries.length) {
+          <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">Sin artículos registrados.</p>
+        } @else {
+          <ul class="mt-3 space-y-2">
+            @for (entry of categoryEntries; track entry.label) {
+              <li class="flex items-center justify-between text-sm">
+                <span class="text-gray-600 dark:text-gray-300">{{ entry.label }}</span>
+                <span class="font-medium text-gray-800 dark:text-white/90">{{ entry.count }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
+      <!-- Consumo mes actual vs anterior -->
+      <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+        <h3 class="text-sm font-semibold text-gray-800 dark:text-white/90">Consumo vs mes anterior</h3>
+        <div class="mt-3 space-y-3">
+          <div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-600 dark:text-gray-300">Agua</span>
+              @if (waterChange !== null) {
+                <span class="text-xs font-medium" [class]="waterChange > 0 ? 'text-error-600 dark:text-error-400' : 'text-success-600 dark:text-success-400'">
+                  {{ waterChange > 0 ? '+' : '' }}{{ waterChange | number: '1.0-1' }}%
+                </span>
+              }
+            </div>
+            <p class="mt-1 text-sm text-gray-800 dark:text-white/90">
+              {{ summary.consumption.currentMonthWater | number: '1.0-1' }} m³
+              <span class="text-xs text-gray-500 dark:text-gray-400"> (antes: {{ summary.consumption.previousMonthWater | number: '1.0-1' }} m³)</span>
+            </p>
+          </div>
+          <div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-600 dark:text-gray-300">Electricidad</span>
+              @if (kwhChange !== null) {
+                <span class="text-xs font-medium" [class]="kwhChange > 0 ? 'text-error-600 dark:text-error-400' : 'text-success-600 dark:text-success-400'">
+                  {{ kwhChange > 0 ? '+' : '' }}{{ kwhChange | number: '1.0-1' }}%
+                </span>
+              }
+            </div>
+            <p class="mt-1 text-sm text-gray-800 dark:text-white/90">
+              {{ summary.consumption.currentMonthKwh | number: '1.0-1' }} kWh
+              <span class="text-xs text-gray-500 dark:text-gray-400"> (antes: {{ summary.consumption.previousMonthKwh | number: '1.0-1' }} kWh)</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Movimientos recientes -->
+    <div class="col-span-12">
+      <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+        <h3 class="text-sm font-semibold text-gray-800 dark:text-white/90">Movimientos recientes de inventario</h3>
+        @if (!summary.recentMovements.length) {
+          <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">Todavía no hay movimientos registrados.</p>
+        } @else {
+          <ul class="mt-3 divide-y divide-gray-100 dark:divide-gray-800">
+            @for (movement of summary.recentMovements; track movement.id) {
+              <li class="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
+                <span class="text-gray-700 dark:text-gray-300">
+                  <span class="font-medium text-gray-800 dark:text-white/90">{{ movement.itemName }}</span>
+                  — {{ movementLabel(movement.type) }} ({{ movement.quantity }})
+                </span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ movement.responsiblePerson || '—' }} · {{ movement.movementAt | date: 'dd/MM/yyyy HH:mm' }}
+                </span>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+  }
+</div>
