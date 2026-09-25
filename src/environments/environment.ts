@@ -1,4 +1,4 @@
 export const environment = {
   /** URL base del backend Spring Boot */
-  apiUrl: 'http://localhost:8080',
+  apiUrl: 'https://plh-backend.onrender.com',
 };
